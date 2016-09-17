@@ -1,4 +1,4 @@
-package acceptance_test
+package umbrella_test
 
 import (
 	"io/ioutil"
@@ -7,10 +7,18 @@ import (
 	"path/filepath"
 	"strings"
 
+	"testing"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
 	"github.com/onsi/gomega/gexec"
 )
+
+func TestUmbrella(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Umbrella Acceptance Tests")
+}
 
 var _ = Describe("Coverage of external binaries", func() {
 	const (
