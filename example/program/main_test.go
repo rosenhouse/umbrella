@@ -13,7 +13,7 @@ import (
 // Before running this test, make sure that you first 'go generate'
 // to create the required hook file
 
-//go:generate bumbershoot
+//go:generate umbrella
 
 func TestFromInsideThePackage(t *testing.T) {
 	fmt.Println("building the binary with coverage")

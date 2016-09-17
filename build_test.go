@@ -42,8 +42,8 @@ func Test1(t *testing.T) {}
 		Expect(ioutil.WriteFile(filepath.Join(pkgPath, "main_test.go"),
 			[]byte(test), 0600)).To(Succeed())
 
-		bumbershootCmd := exec.Command(pathToBumbershoot, "-o", filepath.Join(pkgPath, "hook_test.go"))
-		Expect(bumbershootCmd.Run()).To(Succeed())
+		generateCmd := exec.Command(pathToGenBinary, "-o", filepath.Join(pkgPath, "hook_test.go"))
+		Expect(generateCmd.Run()).To(Succeed())
 	})
 
 	AfterEach(func() {

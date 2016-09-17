@@ -14,11 +14,11 @@ func TestUmbrella(t *testing.T) {
 	RunSpecs(t, "Umbrella Suite")
 }
 
-var pathToBumbershoot string
+var pathToGenBinary string
 
 var _ = BeforeSuite(func() {
 	var err error
-	pathToBumbershoot, err = gexec.Build("github.com/rosenhouse/umbrella/cmd/bumbershoot")
+	pathToGenBinary, err = gexec.Build("github.com/rosenhouse/umbrella/cmd/umbrella")
 	Expect(err).NotTo(HaveOccurred())
 })
 
