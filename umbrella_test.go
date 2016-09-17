@@ -7,18 +7,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"testing"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	"github.com/onsi/gomega/gexec"
 )
-
-func TestUmbrella(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Umbrella Acceptance Tests")
-}
 
 var _ = Describe("Coverage of external binaries", func() {
 	const (
@@ -46,7 +39,7 @@ var _ = Describe("Coverage of external binaries", func() {
 			}, ",",
 		)
 
-		testPkg = pkgPrefix + "/tests"
+		testPkg = pkgPrefix + "/external_tests"
 
 		cmd = exec.Command("go", "test",
 			"-v",
@@ -61,7 +54,7 @@ var _ = Describe("Coverage of external binaries", func() {
 		Expect(os.RemoveAll(workDir)).To(Succeed())
 	})
 
-	AssertCoverageFileIsPresent := func(expectedDir string) {
+	AssertCoverageFileGetsGenerated := func(expectedDir string) {
 		Expect(runAndWait(cmd)).To(ContainSubstring("ok"))
 
 		Expect(runAndWait(
@@ -70,7 +63,7 @@ var _ = Describe("Coverage of external binaries", func() {
 	}
 
 	It("generates the coverage file", func() {
-		AssertCoverageFileIsPresent(workDir)
+		AssertCoverageFileGetsGenerated(workDir)
 	})
 
 	Context("when the tests live in the same package as the binary", func() {
@@ -79,7 +72,7 @@ var _ = Describe("Coverage of external binaries", func() {
 		})
 
 		It("generates the coverage file", func() {
-			AssertCoverageFileIsPresent(workDir)
+			AssertCoverageFileGetsGenerated(workDir)
 		})
 	})
 
@@ -117,7 +110,7 @@ var _ = Describe("Coverage of external binaries", func() {
 		})
 
 		It("generates the coverage file", func() {
-			AssertCoverageFileIsPresent(outputDir)
+			AssertCoverageFileGetsGenerated(outputDir)
 		})
 	})
 })

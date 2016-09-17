@@ -1,6 +1,7 @@
 package main_test
 
 import (
+	"fmt"
 	"os/exec"
 
 	"testing"
@@ -8,20 +9,22 @@ import (
 	"github.com/rosenhouse/umbrella"
 )
 
-func TestFromInsideThePackage(t *testing.T) {
-	coverageCollector, err := umbrella.New()
-	if err != nil {
-		t.Errorf("init umbrella: %s", err)
-		return
-	}
+// This is an example of a in-package test of the external binary
+// Before running this test, make sure that you first 'go generate'
+// to create the required hook file
 
-	pathToProgram, err := coverageCollector.Build("github.com/rosenhouse/umbrella/example/program")
+//go:generate bumbershoot
+
+func TestFromInsideThePackage(t *testing.T) {
+	fmt.Println("building the binary with coverage")
+	pathToProgram, err := umbrella.Build("github.com/rosenhouse/umbrella/example/program")
 	if err != nil {
 		t.Errorf("build binary: %s", err)
 		return
 	}
-	defer coverageCollector.CleanupBuildArtifacts()
+	defer umbrella.CleanupBuildArtifacts()
 
+	fmt.Println("executing the binary")
 	cmd := exec.Command(pathToProgram, "one", "two", "three")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -29,8 +32,10 @@ func TestFromInsideThePackage(t *testing.T) {
 		return
 	}
 
+	fmt.Println("verifying coverage")
 	if string(output) != "onetwothree\n" {
 		t.Errorf("unexpected output from test binary: %s", string(output))
 		return
 	}
+	fmt.Println("complete")
 }
