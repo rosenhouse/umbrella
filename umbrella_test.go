@@ -31,6 +31,7 @@ var _ = Describe("Coverage of external binaries", func() {
 		pkgsForCoverage string
 		testPkg         string
 		workDir         string
+		cmd             *exec.Cmd
 	)
 
 	BeforeEach(func() {
@@ -44,37 +45,53 @@ var _ = Describe("Coverage of external binaries", func() {
 				pkgPrefix + "/program",
 			}, ",",
 		)
+
 		testPkg = pkgPrefix + "/tests"
-	})
 
-	AfterEach(func() {
-		Expect(os.RemoveAll(workDir)).To(Succeed())
-	})
-
-	It("collects coverage profile data from an external binary run", func() {
-		cmd := exec.Command("go", "test",
+		cmd = exec.Command("go", "test",
 			"-v",
 			"-covermode", "set",
 			"-coverpkg", pkgsForCoverage,
 			"-coverprofile", inProcessProfile,
 			testPkg)
 		cmd.Dir = workDir
+	})
 
+	AfterEach(func() {
+		Expect(os.RemoveAll(workDir)).To(Succeed())
+	})
+
+	AssertCoverageFileIsPresent := func(expectedDir string) {
 		Expect(runAndWait(cmd)).To(ContainSubstring("ok"))
 
 		Expect(runAndWait(
-			exec.Command("go", "tool", "cover", "-func", filepath.Join(workDir, externalProfile))),
+			exec.Command("go", "tool", "cover", "-func", filepath.Join(expectedDir, externalProfile))),
 		).To(MatchRegexp(`total:\s+\(statements\)\s+66\.7\%`))
+	}
+
+	It("generates the coverage file", func() {
+		AssertCoverageFileIsPresent(workDir)
+	})
+
+	Context("when the tests live in the same package as the binary", func() {
+		BeforeEach(func() {
+			testPkg = pkgPrefix + "/program"
+		})
+
+		It("generates the coverage file", func() {
+			AssertCoverageFileIsPresent(workDir)
+		})
 	})
 
 	Context("when the in-process covermode is atomic", func() {
-		It("generates the external profile in the same mode", func() {
-			cmd := exec.Command("go", "test",
+		BeforeEach(func() {
+			cmd.Args = []string{"go", "test",
 				"-covermode", "atomic",
 				"-coverprofile", inProcessProfile,
-				testPkg)
-			cmd.Dir = workDir
+				testPkg}
+		})
 
+		It("generates the external profile in the same mode", func() {
 			Expect(runAndWait(cmd)).To(ContainSubstring("ok"))
 			Expect(ioutil.ReadFile(filepath.Join(workDir, inProcessProfile))).To(HavePrefix("mode: atomic"))
 		})
@@ -86,25 +103,21 @@ var _ = Describe("Coverage of external binaries", func() {
 			var err error
 			outputDir, err = ioutil.TempDir("", "outputs")
 			Expect(err).NotTo(HaveOccurred())
+
+			cmd.Args = []string{"go", "test",
+				"-covermode", "set",
+				"-coverpkg", pkgsForCoverage,
+				"-coverprofile", inProcessProfile,
+				"-outputdir", outputDir,
+				testPkg}
 		})
 
 		AfterEach(func() {
 			Expect(os.RemoveAll(outputDir)).To(Succeed())
 		})
 
-		It("stores the external coverage profile in the outputdir", func() {
-			Expect(runAndWait(
-				exec.Command("go", "test",
-					"-covermode", "set",
-					"-coverpkg", pkgsForCoverage,
-					"-coverprofile", inProcessProfile,
-					"-outputdir", outputDir,
-					testPkg),
-			)).To(ContainSubstring("ok"))
-
-			Expect(runAndWait(
-				exec.Command("go", "tool", "cover", "-func", filepath.Join(outputDir, externalProfile))),
-			).To(MatchRegexp(`total:\s+\(statements\)\s+66\.7\%`))
+		It("generates the coverage file", func() {
+			AssertCoverageFileIsPresent(outputDir)
 		})
 	})
 })
