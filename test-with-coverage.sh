@@ -7,5 +7,4 @@ ginkgo -r -p --randomizeAllSpecs --randomizeSuites --failOnPending \
     -coverpkg=github.com/rosenhouse/umbrella/... \
     -covermode=set -coverprofile=umbrella.coverprofile
 
-set +e
-find . -name "*.coverprofile*" | xargs gocovmerge > all.coverprofile
+# find . -name "*.coverprofile*" | xargs gocovmerge > all.coverprofile
