@@ -14,14 +14,19 @@ import (
 )
 
 type Collector interface {
-	Build(pkgPath string) (string, error)
+	Build(pkgPath string, coverPkg ...string) (string, error)
 	CleanupBuildArtifacts()
 }
 
 var DefaultCollector = New(os.Getenv("GOPATH"), os.Getenv("GOROOT"))
 
-func Build(pkgPath string) (string, error) { return DefaultCollector.Build(pkgPath) }
-func CleanupBuildArtifacts()               { DefaultCollector.CleanupBuildArtifacts() }
+func Build(pkgPath string, coverPkg ...string) (string, error) {
+	return DefaultCollector.Build(pkgPath, coverPkg...)
+}
+
+func CleanupBuildArtifacts() {
+	DefaultCollector.CleanupBuildArtifacts()
+}
 
 func New(goPath, goRoot string) Collector {
 	return &collector{
@@ -49,24 +54,23 @@ func getInProcessFilePath() string {
 	return filepath.Join(dir, filename)
 }
 
+func getCoverPkg(coverPkg []string) string {
+	if len(coverPkg) == 0 {
+		return ""
+	}
+	return strings.Join(coverPkg, ",")
+}
+
 func getProfilePath() (string, error) {
 	orig := getInProcessFilePath()
 	if orig == "" {
 		return "", nil
 	}
-	dir := filepath.Dir(orig)
 
-	name := filepath.Base(orig)
-	if strings.HasSuffix(name, ".coverprofile") {
-		name = strings.Replace(name, ".coverprofile", ".external.coverprofile", -1)
-	} else {
-		name += ".external.coverprofile"
-	}
-
-	return filepath.Abs(filepath.Join(dir, name))
+	return filepath.Abs(orig + ".external.coverprofile")
 }
 
-func (c *collector) Build(pkgPath string) (string, error) {
+func (c *collector) Build(pkgPath string, coverPkg ...string) (string, error) {
 	profilePath, err := getProfilePath()
 	if err != nil {
 		return "", err
@@ -81,6 +85,7 @@ func (c *collector) Build(pkgPath string) (string, error) {
 
 	buildCmd := exec.Command("go", "test",
 		"-covermode", "set",
+		"-coverpkg", getCoverPkg(coverPkg),
 		"-c",
 		"-o", outPath,
 		"-tags", "umbrella_testrunmain",

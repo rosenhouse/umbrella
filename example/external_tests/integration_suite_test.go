@@ -17,7 +17,10 @@ var pathToProgram string
 
 var _ = BeforeSuite(func() {
 	var err error
-	pathToProgram, err = umbrella.Build("github.com/rosenhouse/umbrella/example/program")
+	pathToProgram, err = umbrella.Build(
+		"github.com/rosenhouse/umbrella/example/program", // program to build
+		"github.com/rosenhouse/umbrella/...",             // packages to collect coverage on
+	)
 	Expect(err).NotTo(HaveOccurred())
 })
 

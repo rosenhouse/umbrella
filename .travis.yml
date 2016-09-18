@@ -6,6 +6,7 @@ go:
 install:
   - go get -v github.com/onsi/ginkgo/ginkgo
   - go get -v github.com/onsi/gomega
+  - go get -v github.com/wadey/gocovmerge
   - export PATH=$PATH:$HOME/gopath/bin
 
-script: ginkgo -r -p --randomizeAllSpecs --randomizeSuites --failOnPending --trace --race --compilers=2
+script: ./test-with-coverage.sh
