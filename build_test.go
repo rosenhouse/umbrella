@@ -26,7 +26,7 @@ var _ = Describe("Build", func() {
 		pkgPath = filepath.Join(goPath, "src", "something")
 		Expect(os.MkdirAll(pkgPath, 0777)).To(Succeed())
 
-		collector = umbrella.New(goPath)
+		collector = umbrella.New(goPath, os.Getenv("GOROOT"))
 		Expect(err).NotTo(HaveOccurred())
 
 		const program = `package main; func main() {}`

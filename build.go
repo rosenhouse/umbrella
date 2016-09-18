@@ -18,19 +18,23 @@ type Collector interface {
 	CleanupBuildArtifacts()
 }
 
-var DefaultCollector = New(os.Getenv("GOPATH"))
+var DefaultCollector = New(os.Getenv("GOPATH"), os.Getenv("GOROOT"))
 
 func Build(pkgPath string) (string, error) { return DefaultCollector.Build(pkgPath) }
 func CleanupBuildArtifacts()               { DefaultCollector.CleanupBuildArtifacts() }
 
-func New(goPath string) Collector {
-	return &collector{goPath: goPath}
+func New(goPath, goRoot string) Collector {
+	return &collector{
+		goPath: goPath,
+		goRoot: goRoot,
+	}
 }
 
 type collector struct {
 	mutex   sync.Mutex
 	binDirs []string
 	goPath  string
+	goRoot  string
 }
 
 func getInProcessFilePath() string {
@@ -83,8 +87,12 @@ func (c *collector) Build(pkgPath string) (string, error) {
 		"-ldflags", fmt.Sprintf("-X %s.coverProfilePath=%s", pkgPath, profilePath),
 		pkgPath,
 	)
+	buildCmd.Env = []string{"PATH=" + os.Getenv("PATH")}
 	if c.goPath != "" {
-		buildCmd.Env = []string{"GOPATH=" + c.goPath}
+		buildCmd.Env = append(buildCmd.Env, "GOPATH="+c.goPath)
+	}
+	if c.goRoot != "" {
+		buildCmd.Env = append(buildCmd.Env, "GOROOT="+c.goRoot)
 	}
 	msg, err := buildCmd.CombinedOutput()
 	if err != nil {
