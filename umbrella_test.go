@@ -54,16 +54,26 @@ var _ = Describe("Coverage of external binaries", func() {
 		Expect(os.RemoveAll(workDir)).To(Succeed())
 	})
 
-	AssertCoverageFileGetsGenerated := func(expectedDir string) {
+	AssertCoverageFileGetsGenerated := func(expectedDir string) string {
 		Expect(runAndWait(cmd)).To(ContainSubstring("ok"))
 
-		Expect(runAndWait(
-			exec.Command("go", "tool", "cover", "-func", filepath.Join(expectedDir, externalProfile))),
-		).To(MatchRegexp(`total:\s+\(statements\)\s+.*%`))
+		coverStats := runAndWait(
+			exec.Command("go", "tool", "cover", "-func", filepath.Join(expectedDir, externalProfile)),
+		)
+		Expect(coverStats).To(MatchRegexp(`total:\s+\(statements\)\s+.*%`))
+		return coverStats
 	}
 
 	It("generates the coverage file", func() {
 		AssertCoverageFileGetsGenerated(workDir)
+	})
+
+	It("aggregates coverage data from multiple test executions", func() {
+		coverStats := AssertCoverageFileGetsGenerated(workDir)
+		// main has a conditional.  there are two tests, each executing the program to cover a single branch
+		// this expectation verifies that the coverage results from both test runs
+		// get aggregated together to show full coverage
+		Expect(coverStats).To(MatchRegexp(`example/program/main.go:11:	main			100.0%`))
 	})
 
 	Context("when the tests live in the same package as the binary", func() {

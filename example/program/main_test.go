@@ -32,7 +32,7 @@ func TestFromInsideThePackage(t *testing.T) {
 		return
 	}
 
-	fmt.Println("verifying coverage")
+	fmt.Println("verifying output")
 	if string(output) != "onetwothree\n" {
 		t.Errorf("unexpected output from test binary: %s", string(output))
 		return

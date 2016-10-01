@@ -3,121 +3,46 @@ package umbrella
 import (
 	"bytes"
 	"errors"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
-	"sync"
 )
 
-type Collector interface {
-	Build(pkgPath string, coverPkg ...string) (string, error)
-	CleanupBuildArtifacts()
+var ErrMissingHook = errors.New("program source missing umbrella hook")
+
+type builder struct {
+	goPath string
+	goRoot string
 }
 
-var DefaultCollector = New(os.Getenv("GOPATH"), os.Getenv("GOROOT"))
-
-func Build(pkgPath string, coverPkg ...string) (string, error) {
-	return DefaultCollector.Build(pkgPath, coverPkg...)
-}
-
-func CleanupBuildArtifacts() {
-	DefaultCollector.CleanupBuildArtifacts()
-}
-
-func New(goPath, goRoot string) Collector {
-	return &collector{
-		goPath: goPath,
-		goRoot: goRoot,
-	}
-}
-
-type collector struct {
-	mutex   sync.Mutex
-	binDirs []string
-	goPath  string
-	goRoot  string
-}
-
-func getInProcessFilePath() string {
-	filename := flag.Lookup("test.coverprofile").Value.String()
-	if filename == "" {
-		return ""
-	}
-	dir := flag.Lookup("test.outputdir").Value.String()
-	if dir == "" {
-		return filename
-	}
-	return filepath.Join(dir, filename)
-}
-
-func getCoverPkg(coverPkg []string) string {
-	if len(coverPkg) == 0 {
-		return ""
-	}
-	return strings.Join(coverPkg, ",")
-}
-
-func getProfilePath() (string, error) {
-	orig := getInProcessFilePath()
-	if orig == "" {
-		return "", nil
-	}
-
-	return filepath.Abs(orig + ".external.coverprofile")
-}
-
-func (c *collector) Build(pkgPath string, coverPkg ...string) (string, error) {
-	profilePath, err := getProfilePath()
-	if err != nil {
-		return "", err
-	}
-
-	dir, err := ioutil.TempDir("", "build")
-	if err != nil {
-		return "", err
-	}
-
-	outPath := filepath.Join(dir, filepath.Base(pkgPath))
-
+func (b *builder) Build(outPath, testServerAddr, pkgPath string, coverPkg []string) error {
 	buildCmd := exec.Command("go", "test",
 		"-covermode", "set",
 		"-coverpkg", getCoverPkg(coverPkg),
 		"-c",
 		"-o", outPath,
 		"-tags", "umbrella_testrunmain",
-		"-ldflags", fmt.Sprintf("-X %s.coverProfilePath=%s", pkgPath, profilePath),
+		"-ldflags", fmt.Sprintf("-X %s.testServerAddr=%s", pkgPath, testServerAddr),
 		pkgPath,
 	)
 	buildCmd.Env = []string{"PATH=" + os.Getenv("PATH")}
-	if c.goPath != "" {
-		buildCmd.Env = append(buildCmd.Env, "GOPATH="+c.goPath)
+	if b.goPath != "" {
+		buildCmd.Env = append(buildCmd.Env, "GOPATH="+b.goPath)
 	}
-	if c.goRoot != "" {
-		buildCmd.Env = append(buildCmd.Env, "GOROOT="+c.goRoot)
+	if b.goRoot != "" {
+		buildCmd.Env = append(buildCmd.Env, "GOROOT="+b.goRoot)
 	}
 	msg, err := buildCmd.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("go test -c failed: \n%s", msg)
+		return fmt.Errorf("go test -c failed: \n%s", msg)
 	}
 
-	if err := c.verifyBinary(outPath); err != nil {
-		return "", err
-	}
-
-	c.mutex.Lock()
-	c.binDirs = append(c.binDirs, dir)
-	c.mutex.Unlock()
-
-	return outPath, nil
+	return b.verifyBinary(outPath)
 }
 
-var ErrMissingHook = errors.New("program source missing umbrella hook")
-
-func (c *collector) verifyBinary(binPath string) error {
+func (b *builder) verifyBinary(binPath string) error {
 	binData, err := ioutil.ReadFile(binPath)
 	if err != nil {
 		return ErrMissingHook
@@ -132,11 +57,9 @@ func (c *collector) verifyBinary(binPath string) error {
 	return nil
 }
 
-func (c *collector) CleanupBuildArtifacts() {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
-	for _, dir := range c.binDirs {
-		os.RemoveAll(dir)
+func getCoverPkg(coverPkg []string) string {
+	if len(coverPkg) == 0 {
+		return ""
 	}
+	return strings.Join(coverPkg, ",")
 }

@@ -3,18 +3,20 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/rosenhouse/umbrella/example/lib"
 )
 
 func main() {
-	if len(os.Args) == 1 {
-		fmt.Printf("usage: %s [some] [things] [to] [concat]\n", os.Args[0])
-		os.Exit(1)
-	}
-
 	words := os.Args[1:]
-	concatenated := lib.Concat(words...)
+	uppercase := os.Getenv("UPPERCASE")
 
-	fmt.Println(concatenated)
+	// use if-else here, instead of a bare if
+	// so that no single spec can cover both branches
+	if uppercase != "" {
+		fmt.Println(strings.ToUpper(lib.Concat(words...)))
+	} else {
+		fmt.Println(lib.Concat(words...))
+	}
 }

@@ -4,7 +4,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
-	"github.com/rosenhouse/umbrella"
 
 	"testing"
 )
@@ -23,5 +22,5 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = AfterSuite(func() {
-	umbrella.CleanupBuildArtifacts()
+	gexec.CleanupBuildArtifacts()
 })

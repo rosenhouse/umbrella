@@ -15,9 +15,12 @@ const template = `// +build umbrella_testrunmain
 package main
 
 import (
-	"flag"
 	"os"
 	"testing"
+	"flag"
+	"fmt"
+	"net"
+	"net/rpc/jsonrpc"
 )
 
 func TestRunWithUmbrellaCoverage(t *testing.T) {
@@ -26,24 +29,48 @@ func TestRunWithUmbrellaCoverage(t *testing.T) {
 }
 
 func TestMain(m *testing.M) {
-	prepCoverage()
+	prepCoverage(testServerAddr)
 	os.Exit(m.Run())
 }
 
-// path to save coverage data
+// address of test server
 // Build will override this at link-time, e.g.
-//    go build -ldflags '-X yourprogram.coverProfilePath=/tmp/some/path'
-var coverProfilePath = ""
+//    go build -ldflags '-X yourprogram.testServerAddr=/some/server/socket/path'
+var testServerAddr = ""
 
-func prepCoverage() {
-	if coverProfilePath != "" {
-		flag.Set("test.coverprofile", coverProfilePath)
+
+func prepCoverage(testServerAddr string) {
+	if testServerAddr != "" {
+		profileOutputPath, err := acquireRemote(testServerAddr)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "umbrella error: getProfileOutputPath: %s\n", err)
+			os.Exit(69)
+		}
+		flag.Set("test.coverprofile", profileOutputPath)
 	}
 	flag.Set("test.run", "TestRunWithUmbrellaCoverage")
 	origArgs := os.Args[1:]
 	os.Args = append([]string{os.Args[0], "spacer"}, origArgs...)
 	flag.Parse()
 	os.Args = append([]string{os.Args[0]}, origArgs...)
+}
+
+func acquireRemote(testServerAddr string) (string, error) {
+	conn, err := net.Dial("unix", testServerAddr)
+	if err != nil {
+		return "", fmt.Errorf("dial umbrella server: %s", err)
+	}
+	defer conn.Close()
+
+	client := jsonrpc.NewClient(conn)
+
+	var path string
+	err = client.Call("Dispensary.AcquireOne", struct{}{}, &path)
+	if err != nil {
+		return "", fmt.Errorf("rpc AcquireOne: %s", err)
+	}
+
+	return path, nil
 }
 `
 
